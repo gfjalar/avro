@@ -17,6 +17,7 @@
  */
 package org.apache.avro.specific;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -274,7 +275,17 @@ public class SpecificData extends GenericData {
       Schema schema = names.get(fullName);
       if (schema == null)
         try {
-          schema = (Schema)(c.getDeclaredField("SCHEMA$").get(null));
+          Field schemaField = c.getDeclaredField("SCHEMA$");
+          schemaField.setAccessible(true);
+          Object cObj;
+          try {
+            cObj = c.getDeclaredField("MODULE$").get(null);
+          } catch (NoSuchFieldException e) {
+            cObj = null;
+          } catch (IllegalAccessException e) {
+            cObj = null;
+          }
+          schema = (Schema) schemaField.get(cObj);
 
           if (!fullName.equals(getClassName(schema)))
             // HACK: schema mismatches class. maven shade plugin? try replacing.
@@ -310,7 +321,17 @@ public class SpecificData extends GenericData {
   /** Return the protocol for a Java interface. */
   public Protocol getProtocol(Class iface) {
     try {
-      Protocol p = (Protocol)(iface.getDeclaredField("PROTOCOL").get(null));
+      Field protocolField = iface.getDeclaredField("PROTOCOL$");
+      protocolField.setAccessible(true);
+      Object ifaceObj;
+      try {
+        ifaceObj = iface.getDeclaredField("MODULE$").get(null);
+      } catch (NoSuchFieldException e) {
+        ifaceObj = null;
+      } catch (IllegalAccessException e) {
+        ifaceObj = null;
+      }
+      Protocol p = (Protocol) protocolField.get(ifaceObj);
       if (!p.getNamespace().equals(iface.getPackage().getName()))
         // HACK: protocol mismatches iface. maven shade plugin? try replacing.
         p = Protocol.parse(p.toString().replace(p.getNamespace(),
